@@ -204,6 +204,27 @@ async function checkMetaDiagnostics(meta) {
     "NCG2M の重複引数を未保存の編集で直した後も診断が残っている。");
 }
 
+async function checkProvisionalOutline(document) {
+  assert.equal(document.languageId, "ncg2m");
+  const editor = await vscode.window.showTextDocument(document);
+  const fragment = "\n(namespace draft\n  (defn ready (as-type (Fn () Bool) (fn () true)))\n";
+  const end = () => document.positionAt(document.getText().length);
+  const symbols = () => vscode.commands.executeCommand("vscode.executeDocumentSymbolProvider", document.uri);
+  assert.ok(await editor.edit((edit) => edit.insert(end(), fragment)));
+  await waitFor(async () => {
+    const items = await symbols();
+    return items?.some((item) => item.name === "ready" && item.detail === "所属未確定");
+  }, "未保存の名前空間にある補助関数が、所属未確定の項目として表示されない。");
+
+  assert.ok(await editor.edit((edit) => edit.insert(end(), ")\n")));
+  await waitFor(async () => {
+    const items = await symbols();
+    const namespace = items?.find((item) => item.name === "draft");
+    return namespace?.children.some((item) => item.name === "ready" && !item.detail)
+      && !items.some((item) => item.name === "ready");
+  }, "名前空間を閉じた後も、補助関数の所属がアウトラインに反映されない。");
+}
+
 exports.run = async function run() {
   const root = vscode.workspace.workspaceFolders[0].uri;
   const open = (...parts) => vscode.workspace.openTextDocument(vscode.Uri.joinPath(root, ...parts));
@@ -243,8 +264,7 @@ exports.run = async function run() {
 
   await checkEditorNavigation(await open("project", "identifiers.ncg2"));
 
-  const meta = await open("functions.ncg2m");
-  assert.equal(meta.languageId, "ncg2m");
+  await checkProvisionalOutline(await open("functions.ncg2m"));
   await checkMetaDiagnostics(await open("diagnostics.ncg2m"));
   console.log("VSIX: 診断、定義、定常化ヒント、アウトライン、ホバー、識別子分類、NCG2M の診断を確認した。");
 };
