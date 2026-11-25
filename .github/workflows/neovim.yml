@@ -1,0 +1,57 @@
+name: Neovim checks
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/neovim.yml"
+      - "nvim/**"
+      - "fixtures/**"
+      - "tests/neovim.lua"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/neovim.yml"
+      - "nvim/**"
+      - "fixtures/**"
+      - "tests/neovim.lua"
+
+permissions:
+  contents: read
+
+jobs:
+  packaged-extension:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install Neovim 0.11.0
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP "nvim-win64.zip"
+          Invoke-WebRequest "https://github.com/neovim/neovim/releases/download/v0.11.0/nvim-win64.zip" -OutFile $zip
+          $expected = "00ea1a0fd3252a883974a3411159087196924f214000583257188b205d173a23"
+          if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne $expected) {
+            throw "Neovim 0.11.0 ZIP の SHA256 が一致しない。"
+          }
+          Expand-Archive -LiteralPath $zip -DestinationPath $env:RUNNER_TEMP
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $env:RUNNER_TEMP "nvim-win64/bin") -Encoding utf8
+      - name: Install the pinned language server
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          rustup toolchain install 1.99.1 --profile minimal
+          $root = Join-Path $env:RUNNER_TEMP "ncg2-cli"
+          cargo +1.99.1 install --debug --locked --git https://github.com/neknaj/circuitgame2-cli --rev e8b9b7f9c212e5e25a773930f0ade25c95b9db72 --bin circuitgame2-lsp --root $root
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $root "bin") -Encoding utf8
+      - name: Test the packaged extension
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          $archive = Join-Path $env:RUNNER_TEMP "circuitgame2-neovim.zip"
+          $env:NCG2_TEST_RUNTIME = Join-Path $env:RUNNER_TEMP "circuitgame2-neovim"
+          $env:NCG2_TEST_FIXTURES = (Resolve-Path fixtures).Path
+          git archive --format=zip -o $archive HEAD:nvim
+          Expand-Archive -LiteralPath $archive -DestinationPath $env:NCG2_TEST_RUNTIME
+          nvim --headless -u NONE -i NONE -l tests/neovim.lua
+          nvim --headless -u NONE -i NONE -l tests/neovim.lua no-server
+      - name: Upload the tested Neovim archive
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          path: ${{ runner.temp }}/circuitgame2-neovim.zip
+          archive: false
+          if-no-files-found: error
