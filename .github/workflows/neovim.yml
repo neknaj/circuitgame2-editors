@@ -1,8 +1,17 @@
 name: Neovim checks
 on:
+  workflow_call:
+    inputs:
+      editors_ref:
+        required: true
+        type: string
+      lsp_artifact:
+        required: true
+        type: string
   pull_request:
     paths:
       - ".github/workflows/neovim.yml"
+      - ".github/ncg2-cli-rev"
       - "nvim/**"
       - "fixtures/**"
       - "tests/neovim.lua"
@@ -10,6 +19,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/neovim.yml"
+      - ".github/ncg2-cli-rev"
       - "nvim/**"
       - "fixtures/**"
       - "tests/neovim.lua"
@@ -22,6 +32,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: neknaj/circuitgame2-editors
+          ref: ${{ inputs.editors_ref || github.sha }}
+          persist-credentials: false
+      - name: Download the candidate language server
+        if: inputs.lsp_artifact != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ${{ inputs.lsp_artifact }}
+          path: ${{ runner.temp }}/candidate-lsp
+      - name: Use the candidate language server
+        if: inputs.lsp_artifact != ''
+        run: Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $env:RUNNER_TEMP "candidate-lsp") -Encoding utf8
       - name: Install Neovim 0.11.0
         run: |
           $zip = Join-Path $env:RUNNER_TEMP "nvim-win64.zip"
@@ -33,11 +56,13 @@ jobs:
           Expand-Archive -LiteralPath $zip -DestinationPath $env:RUNNER_TEMP
           Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $env:RUNNER_TEMP "nvim-win64/bin") -Encoding utf8
       - name: Install the pinned language server
+        if: inputs.lsp_artifact == ''
         run: |
           $PSNativeCommandUseErrorActionPreference = $true
           rustup toolchain install 1.99.1 --profile minimal
           $root = Join-Path $env:RUNNER_TEMP "ncg2-cli"
-          cargo +1.99.1 install --debug --locked --git https://github.com/neknaj/circuitgame2-cli --rev d9d2596fe356f33779b42e38553ef06c54d65cec --bin circuitgame2-lsp --root $root
+          $cli = (Get-Content -LiteralPath (Join-Path $env:GITHUB_WORKSPACE ".github/ncg2-cli-rev") -Raw -Encoding utf8).Trim()
+          cargo +1.99.1 install --debug --locked --git https://github.com/neknaj/circuitgame2-cli --rev $cli --bin circuitgame2-lsp --root $root
           Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $root "bin") -Encoding utf8
       - name: Test the packaged extension
         run: |
