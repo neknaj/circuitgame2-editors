@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
-const { relative, sep } = require("node:path");
+const { execFileSync } = require("node:child_process");
+const { existsSync } = require("node:fs");
+const { delimiter, join, relative, sep } = require("node:path");
 const { setTimeout: delay } = require("node:timers/promises");
 const vscode = require("vscode");
 
@@ -34,6 +36,21 @@ async function definition(document, offset, declaration, name) {
   }, "定義の位置が宣言と一致しない。");
 }
 
+function serverSupportsNorCount() {
+  const suffix = process.platform === "win32" ? ".exe" : "";
+  const serverDirectory = process.env.PATH.split(delimiter).find((directory) =>
+    existsSync(join(directory, "circuitgame2-lsp" + suffix)));
+  assert.ok(serverDirectory, "PATH に結合テスト用の言語サーバーが見つからない。");
+
+  // テスト対象の言語サーバーと同じ配布に含まれる CLI だけを見る。
+  const cli = join(serverDirectory, "ncg2" + suffix);
+  if (!existsSync(cli)) {
+    return false;
+  }
+  const help = execFileSync(cli, ["--help"], { encoding: "utf8", timeout: 5000 });
+  return /^[ \t]*ncg2 nor-count(?:[ \t]|$)/m.test(help);
+}
+
 async function checkSettlingHint(module, basis) {
   await vscode.window.showTextDocument(module);
   const basisEditor = await vscode.window.showTextDocument(basis, vscode.ViewColumn.Beside);
@@ -42,19 +59,22 @@ async function checkSettlingHint(module, basis) {
   const hints = (requestedRange) =>
     vscode.commands.executeCommand("vscode.executeInlayHintProvider", module.uri, requestedRange);
 
-  async function checkHint(ticks) {
+  const norCount = serverSupportsNorCount();
+  async function checkHint(ticks, gates) {
+    const settling = `定常化 ≤ ${ticks} tick`;
+    const label = norCount ? `NOR ${gates} · ${settling}` : settling;
     await waitFor(async () => {
       const results = await hints(range);
       return results?.length === 1
-        && results[0].label === `定常化 ≤ ${ticks} tick`
+        && results[0].label === label
         && results[0].position.isEqual(position)
         && results[0].kind === undefined
         && !results[0].textEdits?.length
         && results[0].tooltip?.includes("固定入力");
-    }, `モジュール名の直後に定常化 ≤ ${ticks} tick のヒントがない。`);
+    }, `モジュール名の直後に ${label} のヒントがない。`);
   }
 
-  await checkHint(1);
+  await checkHint(1, 2);
   assert.deepEqual(await hints(new vscode.Range(range.start, position)), []);
 
   const original = "(def y (nor x x))";
@@ -66,9 +86,9 @@ async function checkSettlingHint(module, basis) {
   assert.ok(await replace(original, edited));
   assert.ok(basis.isDirty);
   assert.ok(!module.isDirty);
-  await checkHint(2);
+  await checkHint(2, 3);
   assert.ok(await replace(edited, original));
-  await checkHint(1);
+  await checkHint(1, 2);
 }
 
 function checkSemanticPalette() {

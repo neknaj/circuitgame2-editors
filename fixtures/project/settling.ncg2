@@ -1,1 +1,1 @@
-(module settling (in x) (out y) (def y (::logic::invert x)))
+(module settling (in x spare) (out y aux) (def y (::logic::invert x)) (def aux (nor spare spare)))

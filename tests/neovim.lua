@@ -51,27 +51,44 @@ local function jump_to_definition(line, name, target, target_line)
   end), name .. " の定義位置が一致しない")
 end
 
+local function server_supports_nor_count()
+  local server = vim.fn.exepath("circuitgame2-lsp")
+  assert(server ~= "", "PATH に結合テスト用の言語サーバーが見つからない")
+  local suffix = vim.fn.has("win32") == 1 and ".exe" or ""
+  -- テスト対象の言語サーバーと同じ配布に含まれる CLI だけを見る。
+  local cli = vim.fs.joinpath(vim.fs.dirname(server), "ncg2" .. suffix)
+  if not vim.uv.fs_stat(cli) then
+    return false
+  end
+  local result = vim.system({ cli, "--help" }, { text = true, timeout = 5000 }):wait()
+  assert(result.code == 0, "ncg2 --help が失敗した")
+  return result.stdout:find("\n[ \t]*ncg2 nor%-count[ \t\n]") ~= nil
+end
+
 local function check_settling_hint(basis)
   -- Neovim は表示中のバッファーに対してヒントの更新要求を処理する。
   vim.cmd.split()
   local module = edit("project/settling.ncg2")
   vim.lsp.inlay_hint.enable(true, { bufnr = module })
 
-  local function check_hint(ticks)
+  local nor_count = server_supports_nor_count()
+  local function check_hint(ticks, gates)
+    local settling = ("定常化 ≤ %d tick"):format(ticks)
+    local label = nor_count and ("NOR %d · %s"):format(gates, settling) or settling
     assert(vim.wait(timeout, function()
       local hints = vim.lsp.inlay_hint.get({ bufnr = module })
       if #hints ~= 1 then
         return false
       end
       local hint = hints[1].inlay_hint
-      return hint.label == ("定常化 ≤ %d tick"):format(ticks)
+      return hint.label == label
         and hint.position.line == 0 and hint.position.character == #"(module settling"
         and hint.kind == nil and hint.textEdits == nil
         and type(hint.tooltip) == "string" and hint.tooltip:find("固定入力", 1, true)
-    end), ("モジュール名の直後に定常化 ≤ %d tick のヒントがない"):format(ticks))
+    end), ("モジュール名の直後に %s のヒントがない"):format(label))
   end
 
-  check_hint(1)
+  check_hint(1, 2)
   local row = 3
   local original = api.nvim_buf_get_lines(basis, row, row + 1, false)[1]
   local edited, replacements = original:gsub("%(def y %(nor x x%)%)",
@@ -79,9 +96,9 @@ local function check_settling_hint(basis)
   assert(replacements == 1)
   api.nvim_buf_set_lines(basis, row, row + 1, false, { edited })
   assert(vim.bo[basis].modified and not vim.bo[module].modified)
-  check_hint(2)
+  check_hint(2, 3)
   api.nvim_buf_set_lines(basis, row, row + 1, false, { original })
-  check_hint(1)
+  check_hint(1, 2)
   vim.bo[basis].modified = false
   vim.cmd.only()
 end

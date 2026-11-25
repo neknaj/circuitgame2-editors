@@ -62,7 +62,7 @@ jobs:
           rustup toolchain install 1.99.1 --profile minimal
           $root = Join-Path $env:RUNNER_TEMP "ncg2-cli"
           $cli = (Get-Content -LiteralPath (Join-Path $env:GITHUB_WORKSPACE ".github/ncg2-cli-rev") -Raw -Encoding utf8).Trim()
-          cargo +1.99.1 install --debug --locked --git https://github.com/neknaj/circuitgame2-cli --rev $cli --bin circuitgame2-lsp --root $root
+          cargo +1.99.1 install --debug --locked --git https://github.com/neknaj/circuitgame2-cli --rev $cli --bin ncg2 --bin circuitgame2-lsp --root $root
           Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $root "bin") -Encoding utf8
       - name: Test the packaged extension
         run: |
