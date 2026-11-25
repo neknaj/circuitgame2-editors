@@ -1,0 +1,3 @@
+(using nor)
+(func invert (in x) (out y) (def y (nor x x)))
+(func caller (in x) (out y) (def y (invert x)))

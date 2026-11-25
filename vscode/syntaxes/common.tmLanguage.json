@@ -1,0 +1,31 @@
+{
+  "name": "NCG2 lexical syntax",
+  "scopeName": "source.ncg2-common",
+  "patterns": [
+    {
+      "name": "comment.line.semicolon.ncg2",
+      "match": ";.*$"
+    },
+    {
+      "name": "string.quoted.double.ncg2",
+      "begin": "\"",
+      "end": "\"|$",
+      "patterns": [
+        { "name": "constant.character.escape.ncg2", "match": "\\\\[\"\\\\]" },
+        { "name": "invalid.illegal.escape.ncg2", "match": "\\\\." }
+      ]
+    },
+    {
+      "name": "constant.numeric.ncg2",
+      "match": "(?<![^\\s();])(?:#b[01]+|#x[0-9a-fA-F]+|-?[0-9]+)(?=[\\s();]|$)"
+    },
+    {
+      "name": "punctuation.section.parens.ncg2",
+      "match": "[()]"
+    },
+    {
+      "name": "keyword.control.namespace.ncg2",
+      "match": "(?<![^\\s();])(?:namespace|export|use)(?=[\\s();]|$)"
+    }
+  ]
+}

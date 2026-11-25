@@ -1,0 +1,4 @@
+(using nor)
+(namespace logic
+  (export invert)
+  (func invert (in x) (out y) (def y (nor x x))))

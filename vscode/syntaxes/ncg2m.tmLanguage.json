@@ -1,0 +1,15 @@
+{
+  "name": "NCG2M",
+  "scopeName": "source.ncg2m",
+  "patterns": [
+    { "include": "source.ncg2-common" },
+    {
+      "name": "keyword.control.ncg2m",
+      "match": "(?<![^\\s();])(?:defn|defmacro|fn|let|let\\*|if|match|case|fold-nat|fold-list|as-type|syntax|unsyntax|splice)(?=[\\s();]|$)"
+    },
+    {
+      "name": "storage.type.ncg2m",
+      "match": "(?<![^\\s();])(?:Nat|Int|Bool|Symbol|List|Fn|Syntax)(?=[\\s();]|$)"
+    }
+  ]
+}
