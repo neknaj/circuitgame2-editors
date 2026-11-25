@@ -179,6 +179,31 @@ async function checkEditorNavigation(document) {
   }
 }
 
+async function checkMetaDiagnostics(meta) {
+  assert.equal(meta.languageId, "ncg2m");
+  const editor = await vscode.window.showTextDocument(meta);
+  const source = meta.getText();
+  const firstOffset = source.indexOf("key key");
+  assert.ok(firstOffset >= 0);
+  const secondOffset = firstOffset + "key ".length;
+  const span = (offset) => new vscode.Range(meta.positionAt(offset), meta.positionAt(offset + "key".length));
+  const first = span(firstOffset);
+  const second = span(secondOffset);
+  const diagnostics = () => vscode.languages.getDiagnostics(meta.uri);
+  await waitFor(() => diagnostics().some((item) => {
+    const related = item.relatedInformation?.[0]?.location;
+    return item.code === "DuplicateDefnParameter"
+      && item.range.isEqual(second)
+      && related?.uri.toString() === meta.uri.toString()
+      && related.range.isEqual(first);
+  }), "NCG2M の重複引数について、2つの位置を示す診断が届かない。");
+
+  assert.ok(await editor.edit((edit) => edit.replace(second, "other")));
+  assert.ok(meta.isDirty);
+  await waitFor(() => diagnostics().length === 0,
+    "NCG2M の重複引数を未保存の編集で直した後も診断が残っている。");
+}
+
 exports.run = async function run() {
   const root = vscode.workspace.workspaceFolders[0].uri;
   const open = (...parts) => vscode.workspace.openTextDocument(vscode.Uri.joinPath(root, ...parts));
@@ -220,5 +245,6 @@ exports.run = async function run() {
 
   const meta = await open("functions.ncg2m");
   assert.equal(meta.languageId, "ncg2m");
-  console.log("VSIX: 診断、定義、定常化ヒント、アウトライン、ホバー、識別子分類、NCG2M の言語登録を確認した。");
+  await checkMetaDiagnostics(await open("diagnostics.ncg2m"));
+  console.log("VSIX: 診断、定義、定常化ヒント、アウトライン、ホバー、識別子分類、NCG2M の診断を確認した。");
 };

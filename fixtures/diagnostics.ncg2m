@@ -1,0 +1,1 @@
+(defn ready (as-type (Fn (Bool Bool) Bool) (fn (key key) key)))
