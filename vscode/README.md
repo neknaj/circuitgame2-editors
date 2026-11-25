@@ -20,9 +20,9 @@ npm test
 
 `npm run package` は `circuitgame2.vsix` を作る。`npm test` は隔離した VS Code 1.147.0 に VSIX をインストールし、`PATH` 上のサーバーに接続する。
 
-検査で使うサーバーは [CLI 0.1.0 のコミット e8b9b7f](https://github.com/neknaj/circuitgame2-cli/commit/e8b9b7f9c212e5e25a773930f0ade25c95b9db72) からインストールできる。
+検査で使うサーバーは [CLI 0.1.0 のコミット d9d2596](https://github.com/neknaj/circuitgame2-cli/commit/d9d2596fe356f33779b42e38553ef06c54d65cec) からインストールできる。
 
 ~~~sh
 rustup toolchain install 1.99.1 --profile minimal
-cargo +1.99.1 install --locked --git https://github.com/neknaj/circuitgame2-cli --rev e8b9b7f9c212e5e25a773930f0ade25c95b9db72 --bin circuitgame2-lsp
+cargo +1.99.1 install --locked --git https://github.com/neknaj/circuitgame2-cli --rev d9d2596fe356f33779b42e38553ef06c54d65cec --bin circuitgame2-lsp
 ~~~

@@ -27,6 +27,41 @@ local function jump_to_definition(line, name, target, target_line)
   end), name .. " の定義位置が一致しない")
 end
 
+local function check_settling_hint(basis)
+  -- Neovim は表示中のバッファーに対してヒントの更新要求を処理する。
+  vim.cmd.split()
+  local module = edit("project/settling.ncg2")
+  vim.lsp.inlay_hint.enable(true, { bufnr = module })
+
+  local function check_hint(ticks)
+    assert(vim.wait(timeout, function()
+      local hints = vim.lsp.inlay_hint.get({ bufnr = module })
+      if #hints ~= 1 then
+        return false
+      end
+      local hint = hints[1].inlay_hint
+      return hint.label == ("定常化 ≤ %d tick"):format(ticks)
+        and hint.position.line == 0 and hint.position.character == #"(module settling"
+        and hint.kind == nil and hint.textEdits == nil
+        and type(hint.tooltip) == "string" and hint.tooltip:find("固定入力", 1, true)
+    end), ("モジュール名の直後に定常化 ≤ %d tick のヒントがない"):format(ticks))
+  end
+
+  check_hint(1)
+  local row = 3
+  local original = api.nvim_buf_get_lines(basis, row, row + 1, false)[1]
+  local edited, replacements = original:gsub("%(def y %(nor x x%)%)",
+    "(def z (nor x x)) (def y (nor z z))")
+  assert(replacements == 1)
+  api.nvim_buf_set_lines(basis, row, row + 1, false, { edited })
+  assert(vim.bo[basis].modified and not vim.bo[module].modified)
+  check_hint(2)
+  api.nvim_buf_set_lines(basis, row, row + 1, false, { original })
+  check_hint(1)
+  vim.bo[basis].modified = false
+  vim.cmd.only()
+end
+
 local function run()
   vim.opt.runtimepath:prepend(assert(vim.env.NCG2_TEST_RUNTIME))
   vim.cmd("filetype plugin on")
@@ -81,6 +116,8 @@ local function run()
   jump_to_definition(3, "::logic::invert", basis, { 4, 8 })
   edit("project/caller.ncg2")
   jump_to_definition(4, "(inv", basis, { 4, 8 })
+
+  check_settling_hint(basis)
 
   edit("functions.ncg2m")
   assert(vim.bo.filetype == "ncg2m" and vim.bo.commentstring == "; %s" and vim.bo.lisp)
