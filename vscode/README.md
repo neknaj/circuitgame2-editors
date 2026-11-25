@@ -4,7 +4,7 @@ VS Code デスクトップで `.ncg2` を開き、NCG2 の診断、補完、定�
 
 ## インストール
 
-VS Code 1.100 以降で、VSIX をコマンド `code --install-extension circuitgame2.vsix` でインストールする。対応する CLI をインストールし、実行ホストの `PATH` に `circuitgame2-lsp` を置く。
+[GitHub Actions の検査結果](https://github.com/neknaj/circuitgame2-editors/actions/workflows/vscode.yml)から成果物をダウンロードし、展開する。VS Code 1.100 以降で `code --install-extension circuitgame2.vsix` を実行する。対応する CLI をインストールし、実行ホストの `PATH` に `circuitgame2-lsp` を置く。
 
 VS Code Remote では、拡張とサーバーを WSL、SSH 先、コンテナのうち接続している側に入れる。`PATH` の代わりに実行ファイルを指定する場合は、実行ホストの設定で `ncg2.server.path` に絶対パスを入力し、ウィンドウを再読み込みする。
 

@@ -29,3 +29,9 @@ jobs:
       - run: npm ci
       - run: npm run package
       - run: npm test
+      - name: Upload the tested VSIX
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: circuitgame2.vsix
+          path: vscode/circuitgame2.vsix
+          if-no-files-found: error
