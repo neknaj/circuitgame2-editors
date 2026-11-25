@@ -198,6 +198,28 @@ local function run()
   assert(vim.bo.filetype == "ncg2m" and vim.bo.commentstring == "; %s" and vim.bo.lisp)
   check_syntax(1, 2, "ncg2Keyword")
   check_syntax(1, 27, "ncg2Type")
+
+  local meta = edit("diagnostics.ncg2m")
+  assert(vim.bo[meta].filetype == "ncg2m")
+  local source = api.nvim_buf_get_lines(meta, 0, 1, false)[1]
+  local start = assert(source:find("key key", 1, true)) - 1 + #"key "
+  assert(vim.wait(timeout, function()
+    for _, diagnostic in ipairs(vim.diagnostic.get(meta)) do
+      if diagnostic.code == "DuplicateDefnParameter" and diagnostic.lnum == 0
+        and diagnostic.end_lnum == 0 and diagnostic.col == start
+        and diagnostic.end_col == start + #"key"
+      then
+        return true
+      end
+    end
+  end), "NCG2M の重複引数の診断範囲が一致しない")
+  api.nvim_buf_set_text(meta, 0, start, 0, start + #"key", { "other" })
+  assert(vim.bo[meta].modified)
+  assert(vim.wait(timeout, function()
+    return #vim.diagnostic.get(meta) == 0
+  end), "NCG2M の重複引数を未保存の編集で直した後も診断が残っている")
+  api.nvim_buf_set_text(meta, 0, start, 0, start + #"other", { "key" })
+  vim.bo[meta].modified = false
 end
 
 local ok, message = xpcall(run, debug.traceback)
