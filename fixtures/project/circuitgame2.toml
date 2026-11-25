@@ -1,1 +1,1 @@
-sources = ["basis.ncg2", "caller.ncg2"]
+sources = ["basis.ncg2", "caller.ncg2", "settling.ncg2"]

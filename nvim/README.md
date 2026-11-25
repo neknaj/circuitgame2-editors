@@ -18,15 +18,17 @@ vim.opt.runtimepath:prepend("/path/to/circuitgame2-neovim")
 vim.lsp.enable("circuitgame2")
 ~~~
 
+定常化の推論結果を表示するには、サーバーに接続したバッファーで `:lua vim.lsp.inlay_hint.enable(true, { bufnr = 0 })` を実行する。
+
 実行ファイルの場所を明示する場合は、`vim.lsp.enable()` の前に `vim.lsp.config()` で `cmd` を設定する。
 
 ~~~lua
 vim.lsp.config("circuitgame2", { cmd = { "/path/to/circuitgame2-lsp" } })
 ~~~
 
-検査に使うサーバーは [CLI 0.1.0 のコミット e8b9b7f](https://github.com/neknaj/circuitgame2-cli/commit/e8b9b7f9c212e5e25a773930f0ade25c95b9db72) からインストールできる。
+検査に使うサーバーは [CLI 0.1.0 のコミット d9d2596](https://github.com/neknaj/circuitgame2-cli/commit/d9d2596fe356f33779b42e38553ef06c54d65cec) からインストールできる。
 
 ~~~sh
 rustup toolchain install 1.99.1 --profile minimal
-cargo +1.99.1 install --locked --git https://github.com/neknaj/circuitgame2-cli --rev e8b9b7f9c212e5e25a773930f0ade25c95b9db72 --bin circuitgame2-lsp
+cargo +1.99.1 install --locked --git https://github.com/neknaj/circuitgame2-cli --rev d9d2596fe356f33779b42e38553ef06c54d65cec --bin circuitgame2-lsp
 ~~~
