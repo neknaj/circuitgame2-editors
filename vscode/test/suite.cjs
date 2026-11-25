@@ -71,6 +71,94 @@ async function checkSettlingHint(module, basis) {
   await checkHint(1);
 }
 
+function checkSemanticPalette() {
+  const settings = vscode.workspace.getConfiguration("editor").inspect("semanticTokenColorCustomizations");
+  const kinds = ["ncg2Namespace", "ncg2Function", "ncg2Module", "ncg2Signal", "ncg2Port"];
+  function colorsFor(theme) {
+    const defaults = Object.entries(settings.defaultValue)
+      .find(([selector]) => selector.includes(`[${theme}]`));
+    assert.ok(defaults, `${theme} に配色の既定値がない。`);
+    const rules = defaults[1].rules;
+    assert.deepEqual(Object.keys(rules).sort(), kinds.map((kind) => `${kind}:ncg2`).sort());
+    const colors = Object.values(rules);
+    assert.equal(new Set(colors).size, kinds.length, `${theme} で識別子の色が区別できない。`);
+    return colors;
+  }
+  assert.notDeepEqual(colorsFor("Dark 2026"), colorsFor("Light 2026"));
+}
+
+async function checkEditorNavigation(document) {
+  await vscode.window.showTextDocument(document);
+  const source = document.getText();
+  function nameRange(name, start = 0) {
+    const offset = source.indexOf(name, start);
+    assert.ok(offset >= 0, name);
+    return new vscode.Range(document.positionAt(offset), document.positionAt(offset + name.length));
+  }
+
+  const symbols = await vscode.commands.executeCommand("vscode.executeDocumentSymbolProvider", document.uri);
+  const namespace = symbols?.find((symbol) => symbol.name === "palette");
+  const flip = namespace?.children?.find((symbol) => symbol.name === "flip");
+  const relay = namespace?.children?.find((symbol) => symbol.name === "relay");
+  assert.equal(namespace?.kind, vscode.SymbolKind.Namespace);
+  assert.equal(flip?.kind, vscode.SymbolKind.Function);
+  assert.equal(relay?.kind, vscode.SymbolKind.Module);
+  assert.ok(relay.selectionRange.isEqual(nameRange("relay", source.indexOf("(module relay"))));
+
+  async function checkHover(range, expected) {
+    const hovers = await vscode.commands.executeCommand("vscode.executeHoverProvider", document.uri, range.start);
+    assert.ok(hovers?.some((hover) => hover.range?.isEqual(range)
+      && hover.contents.some((content) => {
+        const text = typeof content === "string" ? content : content.value;
+        return expected.every((part) => text.includes(part));
+      })), JSON.stringify(hovers));
+  }
+
+  const reference = nameRange("wire", source.indexOf("(nor wire"));
+  const call = nameRange("flip", source.indexOf("(flip incoming"));
+  await checkHover(reference, ["内部信号", "wire", "bits", "1"]);
+  await checkHover(call, ["::palette::flip", "in", "source", "out", "result"]);
+
+  const legend = await vscode.commands.executeCommand("vscode.provideDocumentSemanticTokensLegend", document.uri);
+  const tokens = await vscode.commands.executeCommand("vscode.provideDocumentSemanticTokens", document.uri);
+  assert.ok(legend && tokens?.data.length);
+  const declarationIndex = legend.tokenModifiers.indexOf("declaration");
+  assert.ok(declarationIndex >= 0);
+  const sites = [];
+  let line = 0;
+  let column = 0;
+  for (let i = 0; i < tokens.data.length; i += 5) {
+    const [deltaLine, deltaColumn, length, kind, modifiers] = tokens.data.subarray(i, i + 5);
+    line += deltaLine;
+    column = deltaLine === 0 ? column + deltaColumn : deltaColumn;
+    sites.push({
+      range: new vscode.Range(line, column, line, column + length),
+      kind: legend.tokenTypes[kind],
+      declaration: Boolean(modifiers & (1 << declarationIndex)),
+    });
+  }
+
+  const expected = [
+    [nameRange("palette"), "ncg2Namespace", true],
+    [nameRange("flip"), "ncg2Function", true],
+    [nameRange("relay", source.indexOf("(module relay")), "ncg2Module", true],
+    [nameRange("wire"), "ncg2Signal", true],
+    [nameRange("incoming"), "ncg2Port", true],
+    [nameRange("outgoing"), "ncg2Port", true],
+    [nameRange("outgoing", source.indexOf("(def outgoing")), "ncg2Port", false],
+    [nameRange("palette", source.indexOf("::palette")), "ncg2Namespace", false],
+    [call, "ncg2Function", false],
+    [nameRange("relay", source.indexOf("::palette")), "ncg2Module", false],
+    [reference, "ncg2Signal", false],
+    [nameRange("incoming", source.indexOf("(flip incoming")), "ncg2Port", false],
+  ];
+  for (const [range, kind, declaration] of expected) {
+    assert.ok(sites.some((site) => site.range.isEqual(range)
+      && site.kind === kind && site.declaration === declaration),
+    `${document.getText(range)} のトークンが ${kind} に分類されていない。`);
+  }
+}
+
 exports.run = async function run() {
   const root = vscode.workspace.workspaceFolders[0].uri;
   const open = (...parts) => vscode.workspace.openTextDocument(vscode.Uri.joinPath(root, ...parts));
@@ -79,6 +167,7 @@ exports.run = async function run() {
   const installed = relative(process.env.NCG2_TEST_EXTENSIONS, extension.extensionPath);
   assert.ok(installed && installed !== ".." && !installed.startsWith(".." + sep));
   assert.equal(vscode.workspace.getConfiguration("ncg2").get("server.path"), "");
+  checkSemanticPalette();
 
   const standalone = await open("standalone.ncg2");
   assert.equal(standalone.languageId, "ncg2");
@@ -107,7 +196,9 @@ exports.run = async function run() {
 
   await checkSettlingHint(await open("project", "settling.ncg2"), basis);
 
+  await checkEditorNavigation(await open("project", "identifiers.ncg2"));
+
   const meta = await open("functions.ncg2m");
   assert.equal(meta.languageId, "ncg2m");
-  console.log("VSIX: PATH 上の言語サーバー、診断、定義、定常化のインレイヒント、NCG2M の言語登録を確認した。");
+  console.log("VSIX: 診断、定義、定常化ヒント、アウトライン、ホバー、識別子分類、NCG2M の言語登録を確認した。");
 };
