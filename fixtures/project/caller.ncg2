@@ -1,0 +1,4 @@
+(use ::logic::invert inv)
+(func caller (in x) (out a b)
+  (def a (::logic::invert x))
+  (def b (inv x)))

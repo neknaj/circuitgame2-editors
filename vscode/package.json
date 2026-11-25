@@ -1,0 +1,77 @@
+{
+  "name": "circuitgame2",
+  "displayName": "Neknaj Circuit Game 2",
+  "description": "NCG2 と NCG2M の編集、NCG2 言語サーバーとの接続",
+  "version": "0.1.0",
+  "publisher": "neknaj",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neknaj/circuitgame2-editors"
+  },
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": ["Programming Languages"],
+  "extensionKind": ["workspace"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ncg2",
+        "aliases": ["NCG2"],
+        "extensions": [".ncg2"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "ncg2m",
+        "aliases": ["NCG2M"],
+        "extensions": [".ncg2m"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "scopeName": "source.ncg2-common",
+        "path": "./syntaxes/common.tmLanguage.json"
+      },
+      {
+        "language": "ncg2",
+        "scopeName": "source.ncg2",
+        "path": "./syntaxes/ncg2.tmLanguage.json"
+      },
+      {
+        "language": "ncg2m",
+        "scopeName": "source.ncg2m",
+        "path": "./syntaxes/ncg2m.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Neknaj Circuit Game 2",
+      "properties": {
+        "ncg2.server.path": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "言語サーバー circuitgame2-lsp の絶対パス。空の場合は拡張ホストの PATH から起動します。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package --out circuitgame2.vsix",
+    "test": "node test/run.cjs"
+  },
+  "dependencies": {
+    "vscode-languageclient": "9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.30",
+    "@types/vscode": "1.100.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.1.1",
+    "typescript": "5.9.3"
+  }
+}

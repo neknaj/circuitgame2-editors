@@ -1,0 +1,37 @@
+name: VS Code checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  packaged-extension:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: vscode
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: vscode/package-lock.json
+      - name: Install the pinned language server
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          $root = Join-Path $env:RUNNER_TEMP "ncg2-cli"
+          cargo +1.99.1 install --debug --locked --git https://github.com/neknaj/circuitgame2-cli --rev e8b9b7f9c212e5e25a773930f0ade25c95b9db72 --bin circuitgame2-lsp --root $root
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $root "bin") -Encoding utf8
+      - run: npm ci
+      - run: npm run package
+      - run: npm test
+      - name: Upload the tested VSIX
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: circuitgame2.vsix
+          path: vscode/circuitgame2.vsix
+          if-no-files-found: error

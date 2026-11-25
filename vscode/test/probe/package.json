@@ -1,0 +1,8 @@
+{
+  "name": "circuitgame2-test-probe",
+  "version": "0.0.0",
+  "publisher": "neknaj",
+  "engines": {
+    "vscode": "^1.100.0"
+  }
+}
