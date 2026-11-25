@@ -1,0 +1,9 @@
+; 識別子の色付け、アウトライン、ホバーを確認する回路。
+(namespace palette
+  (export relay)
+  (func flip (in source) (out result)
+    (def result (nor source source)))
+  (module relay (in incoming) (out outgoing)
+    (def wire (flip incoming))
+    (def outgoing (nor wire wire))))
+(module entry (in x) (out y) (def y (::palette::relay x)))

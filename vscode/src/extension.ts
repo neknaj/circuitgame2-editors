@@ -17,6 +17,7 @@ export async function activate(): Promise<void> {
     { command: executable || "circuitgame2-lsp", transport: TransportKind.stdio },
     {
       documentSelector: [{ language: "ncg2" }, { language: "ncg2m" }],
+      initializationOptions: { ncg2SemanticTokens: true },
       initializationFailedHandler: () => false,
     },
   );

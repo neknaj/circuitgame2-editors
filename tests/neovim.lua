@@ -13,6 +13,30 @@ local function check_syntax(line, column, expected)
   assert(vim.fn.synIDattr(id, "name") == expected, "色付けが一致しない")
 end
 
+local function check_semantic_palette()
+  local kinds = { "ncg2Namespace", "ncg2Function", "ncg2Module", "ncg2Signal", "ncg2Port" }
+  local first_background = vim.o.background
+  local function colors_at(background)
+    vim.o.background = background
+    vim.cmd.colorscheme("default")
+    local colors = {}
+    for _, kind in ipairs(kinds) do
+      local highlight = api.nvim_get_hl(0, { name = "@lsp.type." .. kind .. ".ncg2" })
+      assert(highlight.fg and not colors[highlight.fg], "識別子の色が区別できない")
+      colors[highlight.fg] = true
+    end
+    return colors
+  end
+  assert(not vim.deep_equal(colors_at("dark"), colors_at("light")), "背景に応じて配色が変わらない")
+
+  local group = "@lsp.type.ncg2Port.ncg2"
+  api.nvim_set_hl(0, group, { fg = "#004400" })
+  vim.cmd.doautocmd("ColorScheme")
+  assert(api.nvim_get_hl(0, { name = group }).fg == 0x004400, "ユーザーの色指定が上書きされた")
+  vim.o.background = first_background
+  vim.cmd.colorscheme("default")
+end
+
 local function jump_to_definition(line, name, target, target_line)
   assert(vim.wait(timeout, function()
     return #vim.lsp.get_clients({ bufnr = 0, method = "textDocument/definition" }) > 0
@@ -62,6 +86,37 @@ local function check_settling_hint(basis)
   vim.cmd.only()
 end
 
+local function check_editor_navigation()
+  local buffer = edit("project/identifiers.ncg2")
+  local cases = {
+    { 1, "palette", "ncg2Namespace", true },
+    { 3, "flip", "ncg2Function", true },
+    { 5, "relay", "ncg2Module", true },
+    { 6, "wire", "ncg2Signal", true },
+    { 5, "incoming", "ncg2Port", true },
+    { 5, "outgoing", "ncg2Port", true },
+    { 7, "outgoing", "ncg2Port", false },
+    { 8, "palette", "ncg2Namespace", false },
+    { 6, "flip", "ncg2Function", false },
+    { 8, "relay", "ncg2Module", false },
+    { 7, "wire", "ncg2Signal", false },
+    { 6, "incoming", "ncg2Port", false },
+  }
+  for _, case in ipairs(cases) do
+    local line, name, kind, declaration = unpack(case)
+    local source = api.nvim_buf_get_lines(buffer, line, line + 1, false)[1]
+    local start, finish = source:find(name, 1, true)
+    assert(vim.wait(timeout, function()
+      local tokens = vim.lsp.semantic_tokens.get_at_pos(buffer, line, start - 1)
+      return tokens and vim.iter(tokens):any(function(token)
+        local is_declaration = token.modifiers.declaration == true
+        return token.type == kind and token.start_col == start - 1 and token.end_col == finish
+          and is_declaration == declaration
+      end)
+    end), name .. " のセマンティックトークンが一致しない")
+  end
+end
+
 local function run()
   vim.opt.runtimepath:prepend(assert(vim.env.NCG2_TEST_RUNTIME))
   vim.cmd("filetype plugin on")
@@ -74,6 +129,7 @@ local function run()
     local buffer = edit("standalone.ncg2")
     assert(vim.bo.filetype == "ncg2" and vim.bo.commentstring == "; %s" and vim.bo.lisp)
     check_syntax(1, 2, "ncg2Keyword")
+    check_semantic_palette()
     assert(#vim.lsp.get_clients({ bufnr = buffer }) == 0)
     local messages = api.nvim_exec2("messages", { output = true }).output
     assert(messages:find("circuitgame2-lsp", 1, true) and messages:find("PATH", 1, true))
@@ -118,6 +174,8 @@ local function run()
   jump_to_definition(4, "(inv", basis, { 4, 8 })
 
   check_settling_hint(basis)
+
+  check_editor_navigation()
 
   edit("functions.ncg2m")
   assert(vim.bo.filetype == "ncg2m" and vim.bo.commentstring == "; %s" and vim.bo.lisp)

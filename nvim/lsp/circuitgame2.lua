@@ -10,4 +10,5 @@ return {
   end,
   filetypes = { "ncg2", "ncg2m" },
   root_markers = { "circuitgame2.toml" },
+  init_options = { ncg2SemanticTokens = true },
 }

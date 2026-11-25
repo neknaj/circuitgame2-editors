@@ -46,6 +46,47 @@
         "path": "./syntaxes/ncg2m.tmLanguage.json"
       }
     ],
+    "semanticTokenTypes": [
+      { "id": "ncg2Namespace", "superType": "namespace", "description": "名前空間" },
+      { "id": "ncg2Function", "superType": "function", "description": "組み合わせ回路" },
+      { "id": "ncg2Module", "superType": "function", "description": "順序回路のモジュール" },
+      { "id": "ncg2Signal", "superType": "variable", "description": "内部信号" },
+      { "id": "ncg2Port", "superType": "parameter", "description": "入出力ポート" }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "ncg2",
+        "scopes": {
+          "ncg2Namespace": ["entity.name.namespace"],
+          "ncg2Function": ["entity.name.function"],
+          "ncg2Module": ["entity.name.function"],
+          "ncg2Signal": ["variable.other.readwrite"],
+          "ncg2Port": ["variable.parameter"]
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "editor.semanticTokenColorCustomizations": {
+        "[Dark 2026][*Dark Modern][*Dark+][Visual Studio Dark]": {
+          "rules": {
+            "ncg2Namespace:ncg2": "#C59AF0",
+            "ncg2Function:ncg2": "#EAB46F",
+            "ncg2Module:ncg2": "#E3CE72",
+            "ncg2Signal:ncg2": "#8FB7EC",
+            "ncg2Port:ncg2": "#75D3EB"
+          }
+        },
+        "[Light 2026][*Light Modern][*Light+][Visual Studio Light]": {
+          "rules": {
+            "ncg2Namespace:ncg2": "#7243A8",
+            "ncg2Function:ncg2": "#8A5006",
+            "ncg2Module:ncg2": "#816A00",
+            "ncg2Signal:ncg2": "#255DAA",
+            "ncg2Port:ncg2": "#006F89"
+          }
+        }
+      }
+    },
     "configuration": {
       "title": "Neknaj Circuit Game 2",
       "properties": {
